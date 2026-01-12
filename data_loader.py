@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-import pandas as pd
 from openpyxl import load_workbook
 
 MONTH_NAMES = [
@@ -31,13 +30,16 @@ def default_excel_path() -> Path:
 class ExcelStore:
     path: Path
 
-    @property
+    @lru_cache(maxsize=1)
     def sheet_names(self) -> list[str]:
-        excel = pd.ExcelFile(self.path)
-        return excel.sheet_names
+        workbook = load_workbook(self.path, read_only=True, data_only=True)
+        try:
+            return list(workbook.sheetnames)
+        finally:
+            workbook.close()
 
     def month_sheets(self) -> list[str]:
-        available = set(self.sheet_names)
+        available = set(self.sheet_names())
         sheets: list[str] = []
         for year in range(2024, 2027):
             for month in MONTH_NAMES:
@@ -46,17 +48,34 @@ class ExcelStore:
                     sheets.append(name)
         return sheets
 
-    @lru_cache(maxsize=32)
-    def load_sheet(self, name: str, limit: int | None = None) -> pd.DataFrame:
-        return pd.read_excel(self.path, sheet_name=name, nrows=limit)
-
     def head_as_records(self, name: str, limit: int = 200) -> list[dict]:
-        data = self.load_sheet(name, limit)
-        return data.fillna("").to_dict(orient="records")
+        header, rows = self._read_rows(name, limit)
+        records = []
+        for row in rows:
+            record = {col: value if value is not None else "" for col, value in zip(header, row)}
+            records.append(record)
+        return records
 
     def columns(self, name: str) -> list[str]:
-        data = self.load_sheet(name, 1)
-        return [str(col) for col in data.columns]
+        header, _ = self._read_rows(name, 1)
+        return [str(col) for col in header]
+
+    def _read_rows(self, name: str, limit: int) -> tuple[list[str], list[tuple]]:
+        workbook = load_workbook(self.path, read_only=True, data_only=True)
+        try:
+            sheet = workbook[name]
+            rows_iter = sheet.iter_rows(values_only=True)
+            header = next(rows_iter, None)
+            if not header:
+                return [], []
+            data_rows: list[tuple] = []
+            for index, row in enumerate(rows_iter):
+                if index >= limit:
+                    break
+                data_rows.append(row)
+            return [str(col) for col in header], data_rows
+        finally:
+            workbook.close()
 
     @lru_cache(maxsize=64)
     def row_count(self, name: str) -> int:

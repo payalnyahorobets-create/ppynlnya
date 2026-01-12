@@ -8,7 +8,7 @@ from pathlib import Path
 
 def ensure_dependencies(requirements_path: Path) -> None:
     missing = []
-    for package in ("flask", "pandas", "openpyxl"):
+    for package in ("flask", "openpyxl"):
         if importlib.util.find_spec(package) is None:
             missing.append(package)
 
