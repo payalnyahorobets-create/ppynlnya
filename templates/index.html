@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Аналіз даних • Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div>
+        <h1>Аналіз даних</h1>
+        <p class="subtitle">Нова еволюція аналітики — швидко, чисто, доступно.</p>
+      </div>
+      <div class="actions">
+        <button class="primary" id="refresh">Оновити</button>
+      </div>
+    </header>
+
+    <section class="summary" id="summary">
+      <div class="card">
+        <h3>Номенклатура</h3>
+        <p class="metric" id="products-count">—</p>
+        <span>позицій у базі</span>
+      </div>
+      <div class="card">
+        <h3>ABC-XYZ</h3>
+        <p class="metric" id="analysis-count">—</p>
+        <span>рядків аналізу</span>
+      </div>
+      <div class="card">
+        <h3>Місяці</h3>
+        <p class="metric" id="months-count">—</p>
+        <span>листів продажів</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Номенклатура</h2>
+        <button class="ghost" id="load-products">Завантажити</button>
+      </div>
+      <div class="table-wrap" id="products-table"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Аналіз ABC-XYZ</h2>
+        <button class="ghost" id="load-analysis">Завантажити</button>
+      </div>
+      <div class="table-wrap" id="analysis-table"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Продажі по місяцях</h2>
+        <div class="controls">
+          <select id="month-select"></select>
+          <button class="ghost" id="load-month">Показати</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="month-table"></div>
+    </section>
+  </div>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
