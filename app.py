@@ -15,7 +15,7 @@ def create_app() -> Flask:
     if not excel_path.is_file():
         excel_path = default_excel_path()
 
-    store = ExcelStore(excel_path)
+    store = ExcelStore(excel_path) if excel_path.is_file() else None
 
     @app.route("/")
     def index() -> str:
@@ -23,6 +23,12 @@ def create_app() -> Flask:
 
     @app.route("/api/summary")
     def summary() -> dict:
+        if store is None:
+            return jsonify(
+                {
+                    "error": "Excel file not found. Set EXCEL_PATH or place the workbook next to the app.",
+                }
+            ), 400
         info = build_summary(store)
         return jsonify(
             {
@@ -35,6 +41,8 @@ def create_app() -> Flask:
 
     @app.route("/api/products")
     def products() -> dict:
+        if store is None:
+            return jsonify({"error": "Excel file not found."}), 400
         limit = int(request.args.get("limit", 200))
         rows = store.head_as_records("Номенклатура", limit)
         columns = store.columns("Номенклатура")
@@ -42,6 +50,8 @@ def create_app() -> Flask:
 
     @app.route("/api/analysis")
     def analysis() -> dict:
+        if store is None:
+            return jsonify({"error": "Excel file not found."}), 400
         limit = int(request.args.get("limit", 200))
         rows = store.head_as_records("Аналіз ABC-XYZ", limit)
         columns = store.columns("Аналіз ABC-XYZ")
@@ -49,9 +59,14 @@ def create_app() -> Flask:
 
     @app.route("/api/monthly")
     def monthly() -> dict:
+        if store is None:
+            return jsonify({"error": "Excel file not found."}), 400
         sheet = request.args.get("sheet")
         if not sheet:
             return jsonify({"error": "sheet is required"}), 400
+        available = set(store.month_sheets())
+        if sheet not in available:
+            return jsonify({"error": f"sheet not found: {sheet}"}), 400
         limit = int(request.args.get("limit", 200))
         rows = store.head_as_records(sheet, limit)
         columns = store.columns(sheet)

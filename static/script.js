@@ -9,6 +9,10 @@ const monthTable = document.getElementById("month-table");
 const monthSelect = document.getElementById("month-select");
 
 function renderTable(container, data) {
+  if (data && data.error) {
+    container.innerHTML = `<div class="empty">${data.error}</div>`;
+    return;
+  }
   if (!data || !data.columns || data.columns.length === 0) {
     container.innerHTML = '<div class="empty">Дані недоступні.</div>';
     return;
@@ -37,6 +41,16 @@ function renderTable(container, data) {
 async function loadSummary() {
   const response = await fetch(summaryUrl);
   const data = await response.json();
+  if (data.error) {
+    document.getElementById("products-count").textContent = "—";
+    document.getElementById("analysis-count").textContent = "—";
+    document.getElementById("months-count").textContent = "—";
+    monthSelect.innerHTML = "";
+    productsTable.innerHTML = `<div class="empty">${data.error}</div>`;
+    analysisTable.innerHTML = `<div class="empty">${data.error}</div>`;
+    monthTable.innerHTML = `<div class="empty">${data.error}</div>`;
+    return;
+  }
   document.getElementById("products-count").textContent = data.products_count ?? "—";
   document.getElementById("analysis-count").textContent = data.analysis_count ?? "—";
   document.getElementById("months-count").textContent = data.month_count ?? "—";
@@ -75,9 +89,15 @@ async function loadMonth() {
 
 async function initialize() {
   await loadSummary();
-  productsTable.innerHTML = '<div class="empty">Натисніть «Завантажити», щоб переглянути дані.</div>';
-  analysisTable.innerHTML = '<div class="empty">Натисніть «Завантажити», щоб переглянути дані.</div>';
-  monthTable.innerHTML = '<div class="empty">Оберіть місяць та натисніть «Показати».</div>';
+  if (!productsTable.innerHTML) {
+    productsTable.innerHTML = '<div class="empty">Натисніть «Завантажити», щоб переглянути дані.</div>';
+  }
+  if (!analysisTable.innerHTML) {
+    analysisTable.innerHTML = '<div class="empty">Натисніть «Завантажити», щоб переглянути дані.</div>';
+  }
+  if (!monthTable.innerHTML) {
+    monthTable.innerHTML = '<div class="empty">Оберіть місяць та натисніть «Показати».</div>';
+  }
 }
 
 document.getElementById("refresh").addEventListener("click", initialize);
