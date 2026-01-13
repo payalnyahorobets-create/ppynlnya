@@ -4,32 +4,64 @@ const state = {
   firstSales: new Map(),
   shelfDates: new Map(),
   salesMonths: {},
+  attributes: [],
   settings: {
     excludedCategories: [],
     excludedSkus: [],
   },
+  meta: {
+    lastUpdate: null,
+    theme: "light",
+  },
 };
 
+const branches = [
+  { key: "shevchenko", label: "Шевченко" },
+  { key: "nahorka", label: "Нагорка" },
+  { key: "appollo", label: "Апполо" },
+  { key: "horodok", label: "Городок" },
+];
+
 const elements = {
+  themeToggle: document.getElementById("themeToggle"),
+  resetData: document.getElementById("resetData"),
+  tabs: document.querySelectorAll(".tab"),
+  panels: document.querySelectorAll(".tab-panel"),
+  openImport: document.getElementById("openImport"),
+  importDialog: document.getElementById("importDialog"),
+  importScope: document.getElementById("importScope"),
+  importNomenclature: document.getElementById("importNomenclature"),
   nomenclatureFile: document.getElementById("nomenclatureFile"),
   categoryIdFile: document.getElementById("categoryIdFile"),
   firstSalesFile: document.getElementById("firstSalesFile"),
   shelfDatesFile: document.getElementById("shelfDatesFile"),
-  salesFile: document.getElementById("salesFile"),
-  salesMonth: document.getElementById("salesMonth"),
-  addSales: document.getElementById("addSales"),
-  importStatus: document.getElementById("importStatus"),
   excludedCategories: document.getElementById("excludedCategories"),
   excludedSkus: document.getElementById("excludedSkus"),
   saveSettings: document.getElementById("saveSettings"),
+  importStatus: document.getElementById("importStatus"),
+  lastUpdate: document.getElementById("lastUpdate"),
   nomenclatureTable: document.getElementById("nomenclatureTable"),
   nomenclatureSearch: document.getElementById("nomenclatureSearch"),
   nomenclatureCount: document.getElementById("nomenclatureCount"),
+  categoryFilter: document.getElementById("categoryFilter"),
+  clearFilters: document.getElementById("clearFilters"),
+  attributesTable: document.getElementById("attributesTable"),
+  attributeCategoryFilter: document.getElementById("attributeCategoryFilter"),
+  attributeSearch: document.getElementById("attributeSearch"),
+  addAttribute: document.getElementById("addAttribute"),
+  saveAttributes: document.getElementById("saveAttributes"),
+  purchaseTable: document.getElementById("purchaseTable"),
+  monthSummaryTable: document.getElementById("monthSummaryTable"),
+  salesDialog: document.getElementById("salesDialog"),
+  openSalesImport: document.getElementById("openSalesImport"),
+  salesFile: document.getElementById("salesFile"),
+  salesMonth: document.getElementById("salesMonth"),
+  addSales: document.getElementById("addSales"),
+  salesCategoryFilter: document.getElementById("salesCategoryFilter"),
+  salesSearch: document.getElementById("salesSearch"),
   abcTable: document.getElementById("abcTable"),
   abcSearch: document.getElementById("abcSearch"),
   abcCount: document.getElementById("abcCount"),
-  monthSummaryTable: document.getElementById("monthSummaryTable"),
-  resetData: document.getElementById("resetData"),
 };
 
 const DATA_KEY = "analysis-app-state";
@@ -142,37 +174,6 @@ const parseCSV = (text) => {
   return { headers, data };
 };
 
-const storeState = () => {
-  const payload = {
-    nomenclature: state.nomenclature,
-    categoryIds: Array.from(state.categoryIds.entries()),
-    firstSales: Array.from(state.firstSales.entries()),
-    shelfDates: Array.from(state.shelfDates.entries()),
-    salesMonths: state.salesMonths,
-    settings: state.settings,
-  };
-  localStorage.setItem(DATA_KEY, JSON.stringify(payload));
-};
-
-const restoreState = () => {
-  const raw = localStorage.getItem(DATA_KEY);
-  if (!raw) return;
-  const payload = JSON.parse(raw);
-  state.nomenclature = payload.nomenclature || [];
-  state.categoryIds = new Map(payload.categoryIds || []);
-  state.firstSales = new Map(payload.firstSales || []);
-  state.shelfDates = new Map(payload.shelfDates || []);
-  state.salesMonths = payload.salesMonths || {};
-  state.settings = payload.settings || state.settings;
-  elements.excludedCategories.value = state.settings.excludedCategories.join("\n");
-  elements.excludedSkus.value = state.settings.excludedSkus.join("\n");
-};
-
-const updateStatus = (message, tone = "ok") => {
-  elements.importStatus.textContent = message;
-  elements.importStatus.className = `status ${tone}`;
-};
-
 const readFileAsText = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -243,6 +244,47 @@ const parseFile = async (file) => {
   return parseCSV(text);
 };
 
+const storeState = () => {
+  const payload = {
+    nomenclature: state.nomenclature,
+    categoryIds: Array.from(state.categoryIds.entries()),
+    firstSales: Array.from(state.firstSales.entries()),
+    shelfDates: Array.from(state.shelfDates.entries()),
+    salesMonths: state.salesMonths,
+    settings: state.settings,
+    attributes: state.attributes,
+    meta: state.meta,
+  };
+  localStorage.setItem(DATA_KEY, JSON.stringify(payload));
+};
+
+const restoreState = () => {
+  const raw = localStorage.getItem(DATA_KEY);
+  if (!raw) return;
+  const payload = JSON.parse(raw);
+  state.nomenclature = payload.nomenclature || [];
+  state.categoryIds = new Map(payload.categoryIds || []);
+  state.firstSales = new Map(payload.firstSales || []);
+  state.shelfDates = new Map(payload.shelfDates || []);
+  state.salesMonths = payload.salesMonths || {};
+  state.settings = payload.settings || state.settings;
+  state.attributes = payload.attributes || [];
+  state.meta = payload.meta || state.meta;
+  elements.excludedCategories.value = state.settings.excludedCategories.join("\n");
+  elements.excludedSkus.value = state.settings.excludedSkus.join("\n");
+};
+
+const updateStatus = (message, tone = "ok") => {
+  elements.importStatus.textContent = message;
+  elements.importStatus.className = `status ${tone}`;
+};
+
+const updateLastUpdate = () => {
+  elements.lastUpdate.textContent = state.meta.lastUpdate
+    ? new Date(state.meta.lastUpdate).toLocaleString("uk-UA")
+    : "—";
+};
+
 const filterNomenclature = (items) => {
   const excludedCats = new Set(state.settings.excludedCategories.map(cleanCategory));
   const excludedSkus = new Set(state.settings.excludedSkus.map((sku) => sku.trim()));
@@ -269,6 +311,44 @@ const normalizeNomenclature = (rows) => {
     };
   });
   return filterNomenclature(normalized).filter((item) => item.sku);
+};
+
+const mergeNomenclature = (items, scope) => {
+  const bySku = new Map(state.nomenclature.map((item) => [item.sku, item]));
+  items.forEach((item) => {
+    const existing = bySku.get(item.sku) || {
+      sku: item.sku,
+      code: item.code,
+      name: item.name,
+      category: item.category,
+      purchasePrice: item.purchasePrice,
+      salePrice: item.salePrice,
+      barcode: item.barcode,
+      stocks: {
+        global: 0,
+        shevchenko: 0,
+        nahorka: 0,
+        appollo: 0,
+        horodok: 0,
+      },
+    };
+
+    if (scope === "global") {
+      existing.code = item.code;
+      existing.name = item.name;
+      existing.category = item.category;
+      existing.purchasePrice = item.purchasePrice;
+      existing.salePrice = item.salePrice;
+      existing.barcode = item.barcode;
+      existing.stocks.global = item.stockQty;
+    } else {
+      existing.stocks[scope] = item.stockQty;
+    }
+
+    bySku.set(item.sku, existing);
+  });
+
+  state.nomenclature = Array.from(bySku.values());
 };
 
 const computeSalesBySku = () => {
@@ -311,7 +391,7 @@ const computeNomenclatureMetrics = () => {
     }
     const sales = salesBySku.get(item.sku) || { qty: 0, revenue: 0 };
     const weeklySales = weeks ? sales.qty / weeks : 0;
-    const stockWeeks = weeklySales ? item.stockQty / weeklySales : "";
+    const stockWeeks = weeklySales ? item.stocks.global / weeklySales : "";
     const deadStock = ageDays !== "" && ageDays > 180 && !firstSale ? "⚠️" : "";
     const endDate = firstSale || today;
     let activeWeeks = shelfDate ? Math.round(daysBetween(shelfDate, endDate) / 7) : "";
@@ -347,7 +427,7 @@ const computeAbcXyz = () => {
       category: cleanCategory(item.category),
       purchasePrice: item.purchasePrice,
       salePrice: item.salePrice,
-      stockQty: item.stockQty,
+      stockQty: item.stocks.global,
       revenue: sales.revenue,
       qty: sales.qty,
       margin,
@@ -409,7 +489,7 @@ const computeAbcXyz = () => {
     row.abcXyzRevenue = `${row.abcRevenue}${xyz}`;
     row.abcXyzMargin = `${row.abcMargin}${xyz}`;
     row.turnover = row.stockQty ? row.qty / row.stockQty : 0;
-    row.gmroi = row.stockQty ? (row.margin / (row.stockQty * row.purchasePrice || 1)) : 0;
+    row.gmroi = row.stockQty ? row.margin / (row.stockQty * row.purchasePrice || 1) : 0;
     row.asp = row.qty ? row.revenue / row.qty : 0;
   });
 
@@ -433,6 +513,16 @@ const computeMonthSummary = () => {
     summary.push({ month, ...agg });
   });
   return summary.sort((a, b) => a.month.localeCompare(b.month));
+};
+
+const buildCategoryOptions = (select, categories) => {
+  select.innerHTML = "";
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    select.appendChild(option);
+  });
 };
 
 const renderTable = (table, headers, rows) => {
@@ -463,13 +553,18 @@ const renderTable = (table, headers, rows) => {
 const renderNomenclature = () => {
   const metrics = computeNomenclatureMetrics();
   const query = elements.nomenclatureSearch.value.trim().toLowerCase();
+  const selectedCategories = Array.from(elements.categoryFilter.selectedOptions).map((opt) => opt.value);
+
   const filtered = metrics.filter((item) => {
-    if (!query) return true;
-    return (
-      item.sku.toLowerCase().includes(query) ||
-      item.name.toLowerCase().includes(query) ||
-      item.cleanCategory.toLowerCase().includes(query)
-    );
+    if (query) {
+      const match =
+        item.sku.toLowerCase().includes(query) ||
+        item.name.toLowerCase().includes(query) ||
+        item.cleanCategory.toLowerCase().includes(query);
+      if (!match) return false;
+    }
+    if (selectedCategories.length && !selectedCategories.includes(item.cleanCategory)) return false;
+    return true;
   });
 
   const headers = [
@@ -479,7 +574,11 @@ const renderNomenclature = () => {
     { label: "ID категорії", render: (row) => row.idCategory },
     { label: "Ціна закупівлі", render: (row) => formatNumber(row.purchasePrice) },
     { label: "Ціна продажу", render: (row) => formatNumber(row.salePrice) },
-    { label: "Кількість", render: (row) => formatNumber(row.stockQty, 0) },
+    { label: "Загальний склад", render: (row) => formatNumber(row.stocks.global, 0) },
+    ...branches.map((branch) => ({
+      label: branch.label,
+      render: (row) => formatNumber(row.stocks[branch.key], 0),
+    })),
     { label: "Перший продаж", render: (row) => (row.firstSale ? row.firstSale.toLocaleDateString("uk-UA") : "") },
     { label: "Дата полиці", render: (row) => (row.shelfDate ? row.shelfDate.toLocaleDateString("uk-UA") : "") },
     { label: "Вік, днів", render: (row) => (row.ageDays !== "" ? row.ageDays : "") },
@@ -493,6 +592,53 @@ const renderNomenclature = () => {
 
   renderTable(elements.nomenclatureTable, headers, filtered);
   elements.nomenclatureCount.textContent = `Записів: ${filtered.length}`;
+};
+
+const renderAttributes = () => {
+  const query = elements.attributeSearch.value.trim().toLowerCase();
+  const selectedCategories = Array.from(elements.attributeCategoryFilter.selectedOptions).map(
+    (opt) => opt.value
+  );
+  const filtered = state.attributes.filter((attr) => {
+    if (query && !attr.name.toLowerCase().includes(query)) return false;
+    if (selectedCategories.length && !selectedCategories.includes(attr.category)) return false;
+    return true;
+  });
+
+  const headers = [
+    { label: "Категорія", render: (row) => row.category },
+    { label: "Атрибут", render: (row) => row.name },
+    { label: "Значення", render: (row) => row.value },
+    { label: "Примітка", render: (row) => row.note || "" },
+  ];
+
+  renderTable(elements.attributesTable, headers, filtered);
+};
+
+const renderPurchases = () => {
+  const rows = state.nomenclature.map((item) => ({
+    sku: item.sku,
+    name: item.name,
+    category: cleanCategory(item.category),
+    global: item.stocks.global,
+    shevchenko: item.stocks.shevchenko,
+    nahorka: item.stocks.nahorka,
+    appollo: item.stocks.appollo,
+    horodok: item.stocks.horodok,
+  }));
+
+  const headers = [
+    { label: "Артикул", render: (row) => row.sku },
+    { label: "Назва", render: (row) => row.name },
+    { label: "Категорія", render: (row) => row.category },
+    { label: "Загальний склад", render: (row) => formatNumber(row.global, 0) },
+    { label: "Шевченко", render: (row) => formatNumber(row.shevchenko, 0) },
+    { label: "Нагорка", render: (row) => formatNumber(row.nahorka, 0) },
+    { label: "Апполо", render: (row) => formatNumber(row.appollo, 0) },
+    { label: "Городок", render: (row) => formatNumber(row.horodok, 0) },
+  ];
+
+  renderTable(elements.purchaseTable, headers, rows);
 };
 
 const renderAbcTable = () => {
@@ -524,7 +670,9 @@ const renderAbcTable = () => {
   ];
 
   renderTable(elements.abcTable, headers, filtered);
-  elements.abcCount.textContent = `SKU: ${filtered.length} | Виторг: ${formatNumber(totals.revenue)} | Маржа: ${formatNumber(totals.margin)}`;
+  elements.abcCount.textContent = `SKU: ${filtered.length} | Виторг: ${formatNumber(
+    totals.revenue
+  )} | Маржа: ${formatNumber(totals.margin)}`;
 };
 
 const renderMonthSummary = () => {
@@ -539,20 +687,38 @@ const renderMonthSummary = () => {
 };
 
 const refreshAll = () => {
+  const categories = Array.from(
+    new Set(state.nomenclature.map((item) => cleanCategory(item.category)).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+  buildCategoryOptions(elements.categoryFilter, categories);
+  buildCategoryOptions(elements.attributeCategoryFilter, categories);
+  buildCategoryOptions(elements.salesCategoryFilter, categories);
   renderNomenclature();
+  renderAttributes();
+  renderPurchases();
   renderAbcTable();
   renderMonthSummary();
+  updateLastUpdate();
   storeState();
 };
 
-const handleNomenclatureUpload = async (file) => {
+const handleNomenclatureImport = async () => {
+  const file = elements.nomenclatureFile.files[0];
+  if (!file) {
+    updateStatus("Додайте файл номенклатури.", "warn");
+    return;
+  }
+  const scope = elements.importScope.value;
   const { data } = await parseFile(file);
-  state.nomenclature = normalizeNomenclature(data);
-  updateStatus(`Номенклатура імпортована: ${state.nomenclature.length} позицій.`, "ok");
+  const normalized = normalizeNomenclature(data);
+  mergeNomenclature(normalized, scope);
+  state.meta.lastUpdate = new Date().toISOString();
+  updateStatus(`Номенклатура імпортована: ${normalized.length} позицій.`, "ok");
   refreshAll();
 };
 
 const handleCategoryIdUpload = async (file) => {
+  if (!file) return;
   const { data } = await parseFile(file);
   state.categoryIds = new Map();
   data.forEach((row) => {
@@ -560,11 +726,10 @@ const handleCategoryIdUpload = async (file) => {
     const id = row["ID"] || row["Id"] || row["ID Категорії"] || "";
     if (category && id) state.categoryIds.set(category, id);
   });
-  updateStatus(`ID категорій імпортовано: ${state.categoryIds.size}.`, "ok");
-  refreshAll();
 };
 
 const handleFirstSalesUpload = async (file) => {
+  if (!file) return;
   const { data } = await parseFile(file);
   state.firstSales = new Map();
   data.forEach((row) => {
@@ -572,11 +737,10 @@ const handleFirstSalesUpload = async (file) => {
     const date = parseDate(row["Перша_продаж"] || row["Первая_продажа"] || row["Дата"] || "");
     if (sku && date) state.firstSales.set(String(sku).trim(), date);
   });
-  updateStatus(`Перші продажі імпортовано: ${state.firstSales.size}.`, "ok");
-  refreshAll();
 };
 
 const handleShelfDatesUpload = async (file) => {
+  if (!file) return;
   const { data } = await parseFile(file);
   state.shelfDates = new Map();
   data.forEach((row) => {
@@ -584,8 +748,6 @@ const handleShelfDatesUpload = async (file) => {
     const date = parseDate(row["Дата_полки"] || row["Дата полки"] || row["Дата"] || "");
     if (sku && date) state.shelfDates.set(String(sku).trim(), date);
   });
-  updateStatus(`ShelfDates імпортовано: ${state.shelfDates.size}.`, "ok");
-  refreshAll();
 };
 
 const normalizeSales = (rows) =>
@@ -594,8 +756,10 @@ const normalizeSales = (rows) =>
       const sku = row["SKU"] || row["Артикул"] || row["Код"] || "";
       return {
         sku: String(sku).trim(),
-        qty: Number(String(row["Кількість"] || row["Количество"] || row["Qty"] || 0).replace(",", ".")) || 0,
-        revenue: Number(String(row["Виторг"] || row["Выручка"] || row["Revenue"] || 0).replace(",", ".")) || 0,
+        qty: Number(String(row["Кількість"] || row["Количество"] || row["Qty"] || 0).replace(",", ".")) ||
+          0,
+        revenue: Number(String(row["Виторг"] || row["Выручка"] || row["Revenue"] || 0).replace(",", ".")) ||
+          0,
       };
     })
     .filter((row) => row.sku);
@@ -604,12 +768,10 @@ const handleSalesUpload = async () => {
   const file = elements.salesFile.files[0];
   const month = elements.salesMonth.value.trim();
   if (!file || !month) {
-    updateStatus("Додайте файл продажів та назву місяця.", "warn");
     return;
   }
   const { data } = await parseFile(file);
   state.salesMonths[month] = normalizeSales(data);
-  updateStatus(`Продажі за ${month} додано (${state.salesMonths[month].length} рядків).`, "ok");
   elements.salesFile.value = "";
   elements.salesMonth.value = "";
   refreshAll();
@@ -618,45 +780,89 @@ const handleSalesUpload = async () => {
 const handleSaveSettings = () => {
   state.settings.excludedCategories = splitLines(elements.excludedCategories.value);
   state.settings.excludedSkus = splitLines(elements.excludedSkus.value);
-  updateStatus("Налаштування збережено.", "ok");
-  state.nomenclature = filterNomenclature(state.nomenclature);
   refreshAll();
 };
 
-const handleReset = () => {
-  localStorage.removeItem(DATA_KEY);
-  window.location.reload();
+const handleAddAttribute = () => {
+  const category = prompt("Категорія:");
+  if (!category) return;
+  const name = prompt("Назва атрибуту:");
+  if (!name) return;
+  const value = prompt("Значення:") || "";
+  state.attributes.push({ category, name, value, note: "" });
+  refreshAll();
+};
+
+const switchTab = (tabId) => {
+  elements.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabId));
+  elements.panels.forEach((panel) =>
+    panel.classList.toggle("active", panel.dataset.panel === tabId)
+  );
+};
+
+const toggleTheme = () => {
+  state.meta.theme = state.meta.theme === "dark" ? "light" : "dark";
+  document.body.setAttribute("data-theme", state.meta.theme);
+  storeState();
 };
 
 const init = () => {
   restoreState();
+  document.body.setAttribute("data-theme", state.meta.theme);
+  updateLastUpdate();
   refreshAll();
 
-  elements.nomenclatureFile.addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (file) handleNomenclatureUpload(file);
+  elements.tabs.forEach((tab) => {
+    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
 
-  elements.categoryIdFile.addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (file) handleCategoryIdUpload(file);
+  elements.themeToggle.addEventListener("click", toggleTheme);
+  elements.resetData.addEventListener("click", () => {
+    localStorage.removeItem(DATA_KEY);
+    window.location.reload();
   });
 
-  elements.firstSalesFile.addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (file) handleFirstSalesUpload(file);
+  elements.openImport.addEventListener("click", () => elements.importDialog.showModal());
+  elements.openSalesImport.addEventListener("click", () => elements.salesDialog.showModal());
+
+  elements.importNomenclature.addEventListener("click", async (event) => {
+    event.preventDefault();
+    await handleCategoryIdUpload(elements.categoryIdFile.files[0]);
+    await handleFirstSalesUpload(elements.firstSalesFile.files[0]);
+    await handleShelfDatesUpload(elements.shelfDatesFile.files[0]);
+    handleSaveSettings();
+    await handleNomenclatureImport();
+    elements.importDialog.close();
   });
 
-  elements.shelfDatesFile.addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (file) handleShelfDatesUpload(file);
+  elements.addSales.addEventListener("click", async (event) => {
+    event.preventDefault();
+    await handleSalesUpload();
+    elements.salesDialog.close();
   });
 
-  elements.addSales.addEventListener("click", handleSalesUpload);
-  elements.saveSettings.addEventListener("click", handleSaveSettings);
+  elements.saveSettings.addEventListener("click", (event) => {
+    event.preventDefault();
+    handleSaveSettings();
+    elements.importDialog.close();
+  });
+
   elements.nomenclatureSearch.addEventListener("input", renderNomenclature);
+  elements.categoryFilter.addEventListener("change", renderNomenclature);
+  elements.clearFilters.addEventListener("click", () => {
+    elements.categoryFilter.selectedIndex = -1;
+    elements.nomenclatureSearch.value = "";
+    renderNomenclature();
+  });
+
+  elements.attributeSearch.addEventListener("input", renderAttributes);
+  elements.attributeCategoryFilter.addEventListener("change", renderAttributes);
+  elements.addAttribute.addEventListener("click", handleAddAttribute);
+
+  elements.salesSearch.addEventListener("input", renderMonthSummary);
+  elements.salesCategoryFilter.addEventListener("change", renderMonthSummary);
+
   elements.abcSearch.addEventListener("input", renderAbcTable);
-  elements.resetData.addEventListener("click", handleReset);
 };
 
 init();
