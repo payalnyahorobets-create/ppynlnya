@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Аналіз продажів — локальний дашборд</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div>
+        <h1>Аналіз продажів</h1>
+        <p>Локальний застосунок для розрахунків на основі експорту з CRM.</p>
+      </div>
+      <button id="resetData" class="secondary">Скинути дані</button>
+    </header>
+
+    <main>
+      <section class="panel">
+        <h2>1. Імпорт даних</h2>
+        <div class="grid-2">
+          <div>
+            <label class="field-label">Номенклатура (CSV)</label>
+            <input id="nomenclatureFile" type="file" accept=".csv,.xlsx,.xml" />
+            <p class="hint">Очікувані колонки: Артикул, Код, Ім'я, Категорія, Ціна закупівлі, Ціна продажу, Кількість, Штрихкод.</p>
+          </div>
+          <div>
+            <label class="field-label">ID категорій (CSV)</label>
+            <input id="categoryIdFile" type="file" accept=".csv,.xlsx,.xml" />
+            <p class="hint">Колонки: Категорія, ID. Використовується для визначення ID категорії.</p>
+          </div>
+          <div>
+            <label class="field-label">Перші продажі (CSV)</label>
+            <input id="firstSalesFile" type="file" accept=".csv,.xlsx,.xml" />
+            <p class="hint">Колонки: SKU, Перша_продаж (дата).</p>
+          </div>
+          <div>
+            <label class="field-label">ShelfDates (CSV)</label>
+            <input id="shelfDatesFile" type="file" accept=".csv,.xlsx,.xml" />
+            <p class="hint">Колонки: Артикул, Дата_полки (дата).</p>
+          </div>
+        </div>
+        <div class="sales-import">
+          <div>
+            <label class="field-label">Продажі (CSV)</label>
+            <input id="salesFile" type="file" accept=".csv,.xlsx,.xml" />
+          </div>
+          <div>
+            <label class="field-label">Місяць продажів</label>
+            <input id="salesMonth" type="text" placeholder="Напр. Січень 2025" />
+          </div>
+          <button id="addSales" class="primary">Додати продажі</button>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label class="field-label">Список виключених категорій</label>
+            <textarea id="excludedCategories" rows="4" placeholder="Кожна категорія з нового рядка"></textarea>
+          </div>
+          <div>
+            <label class="field-label">Список виключених SKU</label>
+            <textarea id="excludedSkus" rows="4" placeholder="Кожен артикул з нового рядка"></textarea>
+          </div>
+        </div>
+        <button id="saveSettings" class="secondary">Зберегти налаштування</button>
+        <p id="importStatus" class="status"></p>
+      </section>
+
+      <section class="panel">
+        <h2>2. Номенклатура (розрахунки)</h2>
+        <div class="toolbar">
+          <input id="nomenclatureSearch" type="search" placeholder="Пошук по артикулу або назві" />
+          <span id="nomenclatureCount" class="counter"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="nomenclatureTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>3. Аналіз ABC-XYZ</h2>
+        <div class="toolbar">
+          <input id="abcSearch" type="search" placeholder="Пошук по SKU" />
+          <span id="abcCount" class="counter"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="abcTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>4. Підсумки по місяцях</h2>
+        <div class="table-wrap">
+          <table id="monthSummaryTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Застосунок працює локально у браузері. Дані не відправляються на сервер.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
