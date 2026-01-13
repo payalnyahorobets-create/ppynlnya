@@ -68,7 +68,6 @@ const elements = {
   exportAnalytics: document.getElementById("exportAnalytics"),
   refreshStocks: document.getElementById("refreshStocks"),
   generatePurchase: document.getElementById("generatePurchase"),
-  saveAttributes: document.getElementById("saveAttributes"),
 };
 
 const DATA_KEY = "analysis-app-state";
@@ -251,6 +250,26 @@ const parseFile = async (file) => {
   return parseCSV(text);
 };
 
+const onClick = (element, handler) => {
+  if (!element) return;
+  element.addEventListener("click", handler);
+};
+
+const onInput = (element, handler) => {
+  if (!element) return;
+  element.addEventListener("input", handler);
+};
+
+const onChange = (element, handler) => {
+  if (!element) return;
+  element.addEventListener("change", handler);
+};
+
+const setValue = (element, value) => {
+  if (!element) return;
+  element.value = value;
+};
+
 const storeState = () => {
   const payload = {
     nomenclature: state.nomenclature,
@@ -289,16 +308,18 @@ const restoreState = () => {
   state.settings = payload.settings || state.settings;
   state.attributes = payload.attributes || [];
   state.meta = payload.meta || state.meta;
-  elements.excludedCategories.value = state.settings.excludedCategories.join("\n");
-  elements.excludedSkus.value = state.settings.excludedSkus.join("\n");
+  setValue(elements.excludedCategories, state.settings.excludedCategories.join("\n"));
+  setValue(elements.excludedSkus, state.settings.excludedSkus.join("\n"));
 };
 
 const updateStatus = (message, tone = "ok") => {
+  if (!elements.importStatus) return;
   elements.importStatus.textContent = message;
   elements.importStatus.className = `status ${tone}`;
 };
 
 const updateLastUpdate = () => {
+  if (!elements.lastUpdate) return;
   elements.lastUpdate.textContent = state.meta.lastUpdate
     ? new Date(state.meta.lastUpdate).toLocaleString("uk-UA")
     : "—";
@@ -531,6 +552,7 @@ const computeMonthSummary = () => {
 };
 
 const buildCategoryOptions = (select, categories) => {
+  if (!select) return;
   select.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.textContent = "Категорії";
@@ -569,6 +591,7 @@ const exportToCsv = (filename, rows) => {
 };
 
 const renderTable = (table, headers, rows) => {
+  if (!table) return;
   const thead = table.querySelector("thead");
   const tbody = table.querySelector("tbody");
   thead.innerHTML = "";
@@ -595,8 +618,10 @@ const renderTable = (table, headers, rows) => {
 
 const renderNomenclature = () => {
   const metrics = computeNomenclatureMetrics();
-  const query = elements.nomenclatureSearch.value.trim().toLowerCase();
-  const selectedCategories = Array.from(elements.categoryFilter.selectedOptions).map((opt) => opt.value);
+  const query = elements.nomenclatureSearch ? elements.nomenclatureSearch.value.trim().toLowerCase() : "";
+  const selectedCategories = elements.categoryFilter
+    ? Array.from(elements.categoryFilter.selectedOptions).map((opt) => opt.value)
+    : [];
 
   const filtered = metrics.filter((item) => {
     if (query) {
@@ -634,14 +659,16 @@ const renderNomenclature = () => {
   ];
 
   renderTable(elements.nomenclatureTable, headers, filtered);
-  elements.nomenclatureCount.textContent = `Записів: ${filtered.length}`;
+  if (elements.nomenclatureCount) {
+    elements.nomenclatureCount.textContent = `Записів: ${filtered.length}`;
+  }
 };
 
 const renderAttributes = () => {
-  const query = elements.attributeSearch.value.trim().toLowerCase();
-  const selectedCategories = Array.from(elements.attributeCategoryFilter.selectedOptions).map(
-    (opt) => opt.value
-  );
+  const query = elements.attributeSearch ? elements.attributeSearch.value.trim().toLowerCase() : "";
+  const selectedCategories = elements.attributeCategoryFilter
+    ? Array.from(elements.attributeCategoryFilter.selectedOptions).map((opt) => opt.value)
+    : [];
   const filtered = state.attributes.filter((attr) => {
     if (query && !attr.name.toLowerCase().includes(query)) return false;
     if (selectedCategories.length && !selectedCategories.includes(attr.category)) return false;
@@ -686,7 +713,7 @@ const renderPurchases = () => {
 
 const renderAbcTable = () => {
   const { rows, totals } = computeAbcXyz();
-  const query = elements.abcSearch.value.trim().toLowerCase();
+  const query = elements.abcSearch ? elements.abcSearch.value.trim().toLowerCase() : "";
   const filtered = rows.filter((row) => {
     if (!query) return true;
     return row.sku.toLowerCase().includes(query) || row.name.toLowerCase().includes(query);
@@ -713,9 +740,11 @@ const renderAbcTable = () => {
   ];
 
   renderTable(elements.abcTable, headers, filtered);
-  elements.abcCount.textContent = `SKU: ${filtered.length} | Виторг: ${formatNumber(
-    totals.revenue
-  )} | Маржа: ${formatNumber(totals.margin)}`;
+  if (elements.abcCount) {
+    elements.abcCount.textContent = `SKU: ${filtered.length} | Виторг: ${formatNumber(
+      totals.revenue
+    )} | Маржа: ${formatNumber(totals.margin)}`;
+  }
 };
 
 const renderMonthSummary = () => {
@@ -833,12 +862,12 @@ const refreshAll = () => {
 };
 
 const handleNomenclatureImport = async () => {
-  const file = elements.nomenclatureFile.files[0];
+  const file = elements.nomenclatureFile?.files?.[0];
   if (!file) {
     updateStatus("Додайте файл номенклатури.", "warn");
     return;
   }
-  const scope = elements.importScope.value;
+  const scope = elements.importScope ? elements.importScope.value : "global";
   const { data } = await parseFile(file);
   const normalized = normalizeNomenclature(data);
   mergeNomenclature(normalized, scope);
@@ -895,21 +924,23 @@ const normalizeSales = (rows) =>
     .filter((row) => row.sku);
 
 const handleSalesUpload = async () => {
-  const file = elements.salesFile.files[0];
-  const month = elements.salesMonth.value.trim();
+  const file = elements.salesFile?.files?.[0];
+  const month = elements.salesMonth ? elements.salesMonth.value.trim() : "";
   if (!file || !month) {
     return;
   }
   const { data } = await parseFile(file);
   state.salesMonths[month] = normalizeSales(data);
-  elements.salesFile.value = "";
-  elements.salesMonth.value = "";
+  if (elements.salesFile) elements.salesFile.value = "";
+  if (elements.salesMonth) elements.salesMonth.value = "";
   refreshAll();
 };
 
 const handleSaveSettings = () => {
-  state.settings.excludedCategories = splitLines(elements.excludedCategories.value);
-  state.settings.excludedSkus = splitLines(elements.excludedSkus.value);
+  state.settings.excludedCategories = elements.excludedCategories
+    ? splitLines(elements.excludedCategories.value)
+    : [];
+  state.settings.excludedSkus = elements.excludedSkus ? splitLines(elements.excludedSkus.value) : [];
   refreshAll();
 };
 
@@ -954,61 +985,61 @@ const init = () => {
     tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
 
-  elements.themeToggle.addEventListener("click", toggleTheme);
-  elements.resetData.addEventListener("click", () => {
+  onClick(elements.themeToggle, toggleTheme);
+  onClick(elements.resetData, () => {
     localStorage.removeItem(DATA_KEY);
     window.location.reload();
   });
 
-  elements.openImport.addEventListener("click", () => elements.importDialog.showModal());
-  elements.openSalesImport.addEventListener("click", () => elements.salesDialog.showModal());
+  onClick(elements.openImport, () => elements.importDialog?.showModal?.());
+  onClick(elements.openSalesImport, () => elements.salesDialog?.showModal?.());
 
-  elements.importNomenclature.addEventListener("click", async (event) => {
+  onClick(elements.importNomenclature, async (event) => {
     event.preventDefault();
-    await handleCategoryIdUpload(elements.categoryIdFile.files[0]);
-    await handleFirstSalesUpload(elements.firstSalesFile.files[0]);
-    await handleShelfDatesUpload(elements.shelfDatesFile.files[0]);
+    await handleCategoryIdUpload(elements.categoryIdFile?.files?.[0]);
+    await handleFirstSalesUpload(elements.firstSalesFile?.files?.[0]);
+    await handleShelfDatesUpload(elements.shelfDatesFile?.files?.[0]);
     handleSaveSettings();
     await handleNomenclatureImport();
-    elements.importDialog.close();
+    elements.importDialog?.close?.();
   });
 
-  elements.addSales.addEventListener("click", async (event) => {
+  onClick(elements.addSales, async (event) => {
     event.preventDefault();
     await handleSalesUpload();
-    elements.salesDialog.close();
+    elements.salesDialog?.close?.();
   });
 
-  elements.saveSettings.addEventListener("click", (event) => {
+  onClick(elements.saveSettings, (event) => {
     event.preventDefault();
     handleSaveSettings();
-    elements.importDialog.close();
+    elements.importDialog?.close?.();
   });
 
-  elements.nomenclatureSearch.addEventListener("input", renderNomenclature);
-  elements.categoryFilter.addEventListener("change", renderNomenclature);
-  elements.clearFilters.addEventListener("click", () => {
-    elements.categoryFilter.selectedIndex = -1;
-    elements.nomenclatureSearch.value = "";
+  onInput(elements.nomenclatureSearch, renderNomenclature);
+  onChange(elements.categoryFilter, renderNomenclature);
+  onClick(elements.clearFilters, () => {
+    if (elements.categoryFilter) elements.categoryFilter.selectedIndex = -1;
+    if (elements.nomenclatureSearch) elements.nomenclatureSearch.value = "";
     renderNomenclature();
   });
 
-  elements.attributeSearch.addEventListener("input", renderAttributes);
-  elements.attributeCategoryFilter.addEventListener("change", renderAttributes);
-  elements.addAttribute.addEventListener("click", handleAddAttribute);
+  onInput(elements.attributeSearch, renderAttributes);
+  onChange(elements.attributeCategoryFilter, renderAttributes);
+  onClick(elements.addAttribute, handleAddAttribute);
 
-  elements.salesSearch.addEventListener("input", renderMonthSummary);
-  elements.salesCategoryFilter.addEventListener("change", renderMonthSummary);
+  onInput(elements.salesSearch, renderMonthSummary);
+  onChange(elements.salesCategoryFilter, renderMonthSummary);
 
-  elements.abcSearch.addEventListener("input", renderAbcTable);
+  onInput(elements.abcSearch, renderAbcTable);
 
-  elements.exportProducts.addEventListener("click", handleExportProducts);
-  elements.exportAttributes.addEventListener("click", handleExportAttributes);
-  elements.exportSales.addEventListener("click", handleExportSales);
-  elements.exportAnalytics.addEventListener("click", handleExportAnalytics);
-  elements.refreshStocks.addEventListener("click", renderPurchases);
-  elements.generatePurchase.addEventListener("click", handleGeneratePurchase);
-  elements.saveAttributes.addEventListener("click", handleSaveAttributes);
+  onClick(elements.exportProducts, handleExportProducts);
+  onClick(elements.exportAttributes, handleExportAttributes);
+  onClick(elements.exportSales, handleExportSales);
+  onClick(elements.exportAnalytics, handleExportAnalytics);
+  onClick(elements.refreshStocks, renderPurchases);
+  onClick(elements.generatePurchase, handleGeneratePurchase);
+  onClick(elements.saveAttributes, handleSaveAttributes);
 };
 
 init();
