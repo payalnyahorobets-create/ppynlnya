@@ -62,6 +62,13 @@ const elements = {
   abcTable: document.getElementById("abcTable"),
   abcSearch: document.getElementById("abcSearch"),
   abcCount: document.getElementById("abcCount"),
+  exportProducts: document.getElementById("exportProducts"),
+  exportAttributes: document.getElementById("exportAttributes"),
+  exportSales: document.getElementById("exportSales"),
+  exportAnalytics: document.getElementById("exportAnalytics"),
+  refreshStocks: document.getElementById("refreshStocks"),
+  generatePurchase: document.getElementById("generatePurchase"),
+  saveAttributes: document.getElementById("saveAttributes"),
 };
 
 const DATA_KEY = "analysis-app-state";
@@ -258,11 +265,23 @@ const storeState = () => {
   localStorage.setItem(DATA_KEY, JSON.stringify(payload));
 };
 
+const ensureStockShape = (item) => ({
+  global: 0,
+  shevchenko: 0,
+  nahorka: 0,
+  appollo: 0,
+  horodok: 0,
+  ...(item?.stocks || {}),
+});
+
 const restoreState = () => {
   const raw = localStorage.getItem(DATA_KEY);
   if (!raw) return;
   const payload = JSON.parse(raw);
-  state.nomenclature = payload.nomenclature || [];
+  state.nomenclature = (payload.nomenclature || []).map((item) => ({
+    ...item,
+    stocks: ensureStockShape(item),
+  }));
   state.categoryIds = new Map(payload.categoryIds || []);
   state.firstSales = new Map(payload.firstSales || []);
   state.shelfDates = new Map(payload.shelfDates || []);
@@ -324,14 +343,10 @@ const mergeNomenclature = (items, scope) => {
       purchasePrice: item.purchasePrice,
       salePrice: item.salePrice,
       barcode: item.barcode,
-      stocks: {
-        global: 0,
-        shevchenko: 0,
-        nahorka: 0,
-        appollo: 0,
-        horodok: 0,
-      },
+      stocks: ensureStockShape(item),
     };
+
+    existing.stocks = ensureStockShape(existing);
 
     if (scope === "global") {
       existing.code = item.code;
@@ -517,12 +532,40 @@ const computeMonthSummary = () => {
 
 const buildCategoryOptions = (select, categories) => {
   select.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.textContent = "Категорії";
+  placeholder.disabled = true;
+  select.appendChild(placeholder);
   categories.forEach((category) => {
     const option = document.createElement("option");
     option.value = category;
     option.textContent = category;
     select.appendChild(option);
   });
+};
+
+const exportToCsv = (filename, rows) => {
+  if (!rows.length) return;
+  const content = rows
+    .map((row) =>
+      row
+        .map((cell) => {
+          const value = String(cell ?? "");
+          if (value.includes(",") || value.includes("\"") || value.includes("\n")) {
+            return `"${value.replace(/"/g, "\"\"")}"`;
+          }
+          return value;
+        })
+        .join(",")
+    )
+    .join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 };
 
 const renderTable = (table, headers, rows) => {
@@ -686,6 +729,93 @@ const renderMonthSummary = () => {
   renderTable(elements.monthSummaryTable, headers, summary);
 };
 
+const handleExportProducts = () => {
+  const metrics = computeNomenclatureMetrics();
+  const rows = [
+    [
+      "Артикул",
+      "Назва",
+      "Категорія",
+      "ID категорії",
+      "Ціна закупівлі",
+      "Ціна продажу",
+      "Загальний склад",
+      ...branches.map((branch) => branch.label),
+    ],
+    ...metrics.map((row) => [
+      row.sku,
+      row.name,
+      row.cleanCategory,
+      row.idCategory,
+      row.purchasePrice,
+      row.salePrice,
+      row.stocks.global,
+      ...branches.map((branch) => row.stocks[branch.key]),
+    ]),
+  ];
+  exportToCsv("products.csv", rows);
+};
+
+const handleExportAttributes = () => {
+  const rows = [
+    ["Категорія", "Атрибут", "Значення", "Примітка"],
+    ...state.attributes.map((attr) => [attr.category, attr.name, attr.value, attr.note || ""]),
+  ];
+  exportToCsv("attributes.csv", rows);
+};
+
+const handleExportSales = () => {
+  const summary = computeMonthSummary();
+  const rows = [
+    ["Місяць", "Кількість", "Виторг", "Маржа"],
+    ...summary.map((row) => [row.month, row.qty, row.revenue, row.margin]),
+  ];
+  exportToCsv("sales-summary.csv", rows);
+};
+
+const handleExportAnalytics = () => {
+  const { rows } = computeAbcXyz();
+  const exportRows = [
+    [
+      "SKU",
+      "Назва",
+      "Категорія",
+      "К-сть",
+      "Виторг",
+      "Маржа",
+      "ABC (в)",
+      "ABC (м)",
+      "ABC (к)",
+      "XYZ",
+      "ABC(в)-XYZ",
+      "ABC(м)-XYZ",
+      "Оборотність",
+      "GMROI",
+      "Маржинальність",
+      "Націнка",
+    ],
+    ...rows.map((row) => [
+      row.sku,
+      row.name,
+      row.category,
+      row.qty,
+      row.revenue,
+      row.margin,
+      row.abcRevenue,
+      row.abcMargin,
+      row.abcQty,
+      row.xyz,
+      row.abcXyzRevenue,
+      row.abcXyzMargin,
+      row.turnover,
+      row.gmroi,
+      row.marginPct,
+      row.markup,
+    ]),
+  ];
+  exportToCsv("analytics.csv", exportRows);
+};
+
 const refreshAll = () => {
   const categories = Array.from(
     new Set(state.nomenclature.map((item) => cleanCategory(item.category)).filter(Boolean))
@@ -793,6 +923,14 @@ const handleAddAttribute = () => {
   refreshAll();
 };
 
+const handleSaveAttributes = () => {
+  storeState();
+};
+
+const handleGeneratePurchase = () => {
+  alert("Список закупок буде сформовано після вибору правил. Цей блок готується.");
+};
+
 const switchTab = (tabId) => {
   elements.tabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.tab === tabId));
   elements.panels.forEach((panel) =>
@@ -863,6 +1001,14 @@ const init = () => {
   elements.salesCategoryFilter.addEventListener("change", renderMonthSummary);
 
   elements.abcSearch.addEventListener("input", renderAbcTable);
+
+  elements.exportProducts.addEventListener("click", handleExportProducts);
+  elements.exportAttributes.addEventListener("click", handleExportAttributes);
+  elements.exportSales.addEventListener("click", handleExportSales);
+  elements.exportAnalytics.addEventListener("click", handleExportAnalytics);
+  elements.refreshStocks.addEventListener("click", renderPurchases);
+  elements.generatePurchase.addEventListener("click", handleGeneratePurchase);
+  elements.saveAttributes.addEventListener("click", handleSaveAttributes);
 };
 
 init();
