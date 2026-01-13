@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Аналіз продажів — локальний дашборд</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-theme="light">
+    <header class="site-header">
+      <div>
+        <h1>Аналіз продажів</h1>
+        <p>Аналітика, закупки та продажі з CRM-експортів.</p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="secondary">🌗 Тема</button>
+        <button id="resetData" class="secondary">Скинути дані</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="products">Товари</button>
+      <button class="tab" data-tab="attributes">Характеристики</button>
+      <button class="tab" data-tab="purchases">Закупки</button>
+      <button class="tab" data-tab="sales">Продажі</button>
+      <button class="tab" data-tab="analytics">Аналітика</button>
+      <button class="tab tab-dev" data-tab="promo">Акції <span>в розробці</span></button>
+      <button class="tab tab-dev" data-tab="motivation">Мотивації <span>в розробці</span></button>
+      <button class="tab tab-dev" data-tab="reports">Звіти <span>в розробці</span></button>
+    </nav>
+
+    <main>
+      <section class="panel tab-panel active" data-panel="products">
+        <div class="panel-header">
+          <div>
+            <h2>Товари</h2>
+            <p class="muted">Номенклатура, залишки по філіях та оновлення даних.</p>
+          </div>
+          <div class="panel-actions">
+            <button class="secondary" id="exportProducts">Експорт</button>
+            <button class="primary" id="openImport">Імпорт</button>
+          </div>
+        </div>
+
+        <div class="info-strip">
+          <div>
+            <span class="label">Останнє оновлення номенклатури:</span>
+            <span id="lastUpdate">—</span>
+          </div>
+          <div>
+            <span class="label">Філії:</span>
+            <span>Шевченко, Нагорка, Апполо, Городок</span>
+          </div>
+        </div>
+
+        <div class="filters">
+          <input id="nomenclatureSearch" type="search" placeholder="Пошук по артикулу або назві" />
+          <select id="categoryFilter" multiple></select>
+          <button id="clearFilters" class="secondary">Очистити фільтри</button>
+          <span id="nomenclatureCount" class="counter"></span>
+        </div>
+
+        <div class="table-wrap">
+          <table id="nomenclatureTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel tab-panel" data-panel="attributes">
+        <div class="panel-header">
+          <div>
+            <h2>Характеристики</h2>
+            <p class="muted">Керування атрибутами товарів по категоріях.</p>
+          </div>
+          <div class="panel-actions">
+            <button class="secondary" id="exportAttributes">Експорт</button>
+            <button class="primary" id="saveAttributes">Зберегти</button>
+          </div>
+        </div>
+        <div class="filters">
+          <select id="attributeCategoryFilter" multiple></select>
+          <input id="attributeSearch" type="search" placeholder="Пошук атрибутів" />
+          <button id="addAttribute" class="secondary">Додати атрибут</button>
+        </div>
+        <div class="table-wrap">
+          <table id="attributesTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel tab-panel" data-panel="purchases">
+        <div class="panel-header">
+          <div>
+            <h2>Закупки</h2>
+            <p class="muted">Порівняння залишків по філіях та плани поповнення.</p>
+          </div>
+          <div class="panel-actions">
+            <button class="secondary" id="refreshStocks">Оновити залишки</button>
+            <button class="primary" id="generatePurchase">Сформувати список закупок</button>
+          </div>
+        </div>
+        <div class="info-strip">
+          <span>Модуль підтягує останні імпорти номенклатури по філіях і дозволяє підготувати список переміщень.</span>
+        </div>
+        <div class="table-wrap">
+          <table id="purchaseTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel tab-panel" data-panel="sales">
+        <div class="panel-header">
+          <div>
+            <h2>Продажі</h2>
+            <p class="muted">Помесячна аналітика та розкладка по філіях.</p>
+          </div>
+          <div class="panel-actions">
+            <button class="secondary" id="exportSales">Експорт</button>
+            <button class="primary" id="openSalesImport">Імпорт продажів</button>
+          </div>
+        </div>
+        <div class="filters">
+          <select id="salesCategoryFilter" multiple></select>
+          <input id="salesSearch" type="search" placeholder="Пошук по SKU" />
+        </div>
+        <div class="table-wrap">
+          <table id="monthSummaryTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="charts">
+          <div class="chart-card">
+            <h3>Динаміка по SKU</h3>
+            <canvas id="salesChart" height="120"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel tab-panel" data-panel="analytics">
+        <div class="panel-header">
+          <div>
+            <h2>Аналітика</h2>
+            <p class="muted">ABC-XYZ, оборотність, маржинальність та глибока статистика.</p>
+          </div>
+          <div class="panel-actions">
+            <button class="secondary" id="exportAnalytics">Експорт</button>
+            <button class="primary" id="refreshAnalytics">Оновити</button>
+          </div>
+        </div>
+        <div class="filters">
+          <input id="abcSearch" type="search" placeholder="Пошук по SKU" />
+          <span id="abcCount" class="counter"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="abcTable">
+            <thead></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel tab-panel dev" data-panel="promo">
+        <h2>Акції</h2>
+        <p class="muted">Розділ у розробці.</p>
+      </section>
+
+      <section class="panel tab-panel dev" data-panel="motivation">
+        <h2>Мотивації</h2>
+        <p class="muted">Розділ у розробці.</p>
+      </section>
+
+      <section class="panel tab-panel dev" data-panel="reports">
+        <h2>Звіти</h2>
+        <p class="muted">Розділ у розробці.</p>
+      </section>
+    </main>
+
+    <dialog id="importDialog" class="modal">
+      <form method="dialog" class="modal-content">
+        <header>
+          <h3>Імпорт номенклатури</h3>
+          <button class="secondary" value="close">Закрити</button>
+        </header>
+        <div class="modal-grid">
+          <div>
+            <label class="field-label">Тип імпорту</label>
+            <select id="importScope">
+              <option value="global">Загальна номенклатура</option>
+              <option value="shevchenko">Шевченко</option>
+              <option value="nahorka">Нагорка</option>
+              <option value="appollo">Апполо</option>
+              <option value="horodok">Городок</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Файл номенклатури</label>
+            <input id="nomenclatureFile" type="file" accept=".csv,.xlsx,.xml" />
+            <p class="hint">Колонки: Артикул, Код, Ім'я, Категорія, Ціна закупівлі, Ціна продажу, Кількість, Штрихкод.</p>
+          </div>
+          <div>
+            <label class="field-label">Файл ID категорій</label>
+            <input id="categoryIdFile" type="file" accept=".csv,.xlsx,.xml" />
+          </div>
+          <div>
+            <label class="field-label">Перші продажі</label>
+            <input id="firstSalesFile" type="file" accept=".csv,.xlsx,.xml" />
+          </div>
+          <div>
+            <label class="field-label">ShelfDates</label>
+            <input id="shelfDatesFile" type="file" accept=".csv,.xlsx,.xml" />
+          </div>
+          <div>
+            <label class="field-label">Виключені категорії</label>
+            <textarea id="excludedCategories" rows="4" placeholder="Кожна категорія з нового рядка"></textarea>
+          </div>
+          <div>
+            <label class="field-label">Виключені SKU</label>
+            <textarea id="excludedSkus" rows="4" placeholder="Кожен артикул з нового рядка"></textarea>
+          </div>
+        </div>
+        <footer>
+          <button id="saveSettings" class="secondary" value="close">Зберегти</button>
+          <button id="importNomenclature" class="primary" value="close">Імпортувати</button>
+        </footer>
+        <p id="importStatus" class="status"></p>
+      </form>
+    </dialog>
+
+    <dialog id="salesDialog" class="modal">
+      <form method="dialog" class="modal-content">
+        <header>
+          <h3>Імпорт продажів</h3>
+          <button class="secondary" value="close">Закрити</button>
+        </header>
+        <div class="modal-grid">
+          <div>
+            <label class="field-label">Файл продажів</label>
+            <input id="salesFile" type="file" accept=".csv,.xlsx,.xml" />
+          </div>
+          <div>
+            <label class="field-label">Місяць продажів</label>
+            <input id="salesMonth" type="text" placeholder="Напр. Січень 2025" />
+          </div>
+        </div>
+        <footer>
+          <button id="addSales" class="primary" value="close">Додати продажі</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <footer>
+      <p>Застосунок працює локально у браузері. Дані не відправляються на сервер.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
